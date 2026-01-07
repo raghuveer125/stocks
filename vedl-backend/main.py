@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import yfinance as yf
 from datetime import datetime, timedelta
+import pytz
 
 app = FastAPI()
 
@@ -18,29 +19,10 @@ app.add_middleware(
 def read_root():
     return {"message": "VEDL Stock API"}
 
-@app.get("/api/stock/{ticker}")
-def get_stock_data(ticker: str, interval: str = "1m", period: str = "7d"):
-    stock = yf.Ticker(f"{ticker}.NS")
-    hist = stock.history(period=period, interval=interval)
-    
-    data = []
-    for index, row in hist.iterrows():
-        data.append({
-            "time": int(index.timestamp()),
-            "open": float(row['Open']),
-            "high": float(row['High']),
-            "low": float(row['Low']),
-            "close": float(row['Close']),
-            "volume": int(row['Volume'])
-        })
-    
-    return {"data": data[-10:]}  # Return last 10 candles
-
-@app.get("/api/stock/{ticker}/{count}")
-def get_last_candles(ticker: str, count: int, interval: str = "1m"):
+@app.get("/api/stock/{ticker}/{count}/{interval}")
+def get_last_candles_with_interval(ticker: str, count: int, interval: str):
     stock = yf.Ticker(f"{ticker}.NS")
     
-    # Map intervals to appropriate periods
     period_map = {
         "1m": "7d",
         "5m": "60d", 
@@ -50,33 +32,25 @@ def get_last_candles(ticker: str, count: int, interval: str = "1m"):
     period = period_map.get(interval, "7d")
     hist = stock.history(period=period, interval=interval)
     
-    data = []
-    for index, row in hist.tail(count).iterrows():
-        data.append({
-            "time": int(index.timestamp()),
-            "open": float(row['Open']),
-            "high": float(row['High']),
-            "low": float(row['Low']),
-            "close": float(row['Close']),
-            "volume": int(row['Volume'])
-        })
+    # Filter only market hours (9:15 AM - 3:30 PM IST)
+    ist = pytz.timezone('Asia/Kolkata')
+    filtered_data = []
     
-    return {"data": data}
-
-@app.get("/api/stock/{ticker}/{count}/{interval}")
-def get_last_candles_interval(ticker: str, count: int, interval: str = "1m"):
-    stock = yf.Ticker(f"{ticker}.NS")
-    hist = stock.history(period="7d", interval=interval)
+    for index, row in hist.iterrows():
+        ist_time = index.astimezone(ist)
+        hour = ist_time.hour
+        minute = ist_time.minute
+        
+        if (hour == 9 and minute >= 15) or (10 <= hour < 15) or (hour == 15 and minute <= 30):
+            # Use Unix timestamp for lightweight-charts
+            timestamp = int(index.timestamp())
+            filtered_data.append({
+                "time": timestamp,
+                "open": float(row['Open']),
+                "high": float(row['High']),
+                "low": float(row['Low']),
+                "close": float(row['Close']),
+                "volume": int(row['Volume'])
+            })
     
-    data = []
-    for index, row in hist.tail(count).iterrows():
-        data.append({
-            "time": int(index.timestamp()),
-            "open": float(row['Open']),
-            "high": float(row['High']),
-            "low": float(row['Low']),
-            "close": float(row['Close']),
-            "volume": int(row['Volume'])
-        })
-    
-    return {"data": data}
+    return {"data": filtered_data[-count:] if len(filtered_data) >= count else filtered_data}

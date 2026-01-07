@@ -11,6 +11,25 @@ function StockChart({ ticker, count, interval, onDataUpdate }) {
     const chart = createChart(chartContainerRef.current, {
       width: 800,
       height: 400,
+      timeScale: {
+        timeVisible: true,
+        secondsVisible: false,
+      },
+      localization: {
+        timeFormatter: (timestamp) => {
+          const date = new Date(timestamp * 1000);
+          const istDateTime = date.toLocaleString('en-IN', {
+            timeZone: 'Asia/Kolkata',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          });
+          return istDateTime;
+        },
+      },
     });
 
     const candlestickSeries = chart.addCandlestickSeries({
