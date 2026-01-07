@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 import pandas as pd
 from dotenv import load_dotenv
 import os
-import requests
 
 from database import engine, get_db, Base
 from models import Wallet, Portfolio, Trade
@@ -18,48 +17,6 @@ load_dotenv()
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
-
-def fetch_yahoo_data(ticker: str, interval: str = "1m", range_val: str = "1d"):
-    """Fetch data directly from Yahoo Finance API"""
-    try:
-        url = "https://query1.finance.yahoo.com/v8/finance/chart/{}".format(ticker)
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
-        }
-        params = {
-            'interval': interval,
-            'range': range_val
-        }
-
-        response = requests.get(url, headers=headers, params=params, timeout=10)
-        response.raise_for_status()
-
-        data = response.json()
-        result = data['chart']['result'][0]
-
-        timestamps = result['timestamp']
-        quote = result['indicators']['quote'][0]
-
-        candles = []
-        for i in range(len(timestamps)):
-            if (quote['open'][i] is not None and
-                quote['high'][i] is not None and
-                quote['low'][i] is not None and
-                quote['close'][i] is not None and
-                quote['volume'][i] is not None):
-                candles.append({
-                    'time': timestamps[i],
-                    'open': round(float(quote['open'][i]), 2),
-                    'high': round(float(quote['high'][i]), 2),
-                    'low': round(float(quote['low'][i]), 2),
-                    'close': round(float(quote['close'][i]), 2),
-                    'volume': int(quote['volume'][i])
-                })
-
-        return candles
-    except Exception as e:
-        print(f"Error fetching Yahoo data: {e}")
-        return []
 
 def calculate_ema(data, period):
     """Calculate Exponential Moving Average"""
@@ -130,24 +87,19 @@ def get_last_candles(ticker: str, count: int):
 
 @app.get("/api/stock/{ticker}/{count}/{interval}")
 def get_last_candles_interval(ticker: str, count: int, interval: str = "1m"):
-    # Map interval to Yahoo Finance range
-    range_map = {
-        "1m": "1d",
-        "2m": "1d",
-        "5m": "5d",
-        "15m": "5d",
-        "30m": "5d",
-        "1h": "1mo",
-        "1d": "1y"
-    }
-    range_val = range_map.get(interval, "1d")
+    stock = yf.Ticker(f"{ticker}.NS")
+    hist = stock.history(period="1d", interval=interval)
 
-    # Fetch data directly from Yahoo Finance API
-    ticker_symbol = f"{ticker}.NS"  # Add .NS for Indian stocks
-    all_data = fetch_yahoo_data(ticker_symbol, interval, range_val)
-
-    # Get last 'count' candles
-    data = all_data[-count:] if len(all_data) >= count else all_data
+    data = []
+    for index, row in hist.tail(count).iterrows():
+        data.append({
+            "time": int(index.timestamp()),
+            "open": float(row['Open']),
+            "high": float(row['High']),
+            "low": float(row['Low']),
+            "close": float(row['Close']),
+            "volume": int(row['Volume'])
+        })
 
     # Calculate EMAs
     ema9 = calculate_ema(data, 9)
