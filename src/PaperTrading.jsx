@@ -9,60 +9,33 @@ function PaperTrading({ currentPrice, ticker, autoTradeConfig, stockData }) {
 
   // Auto-trading logic
   useEffect(() => {
-    if (!autoTradeConfig.enabled || !currentPrice || !stockData.emaValue) return;
+    if (!autoTradeConfig.enabled || !currentPrice) return;
 
-    const { buyCondition, sellCondition } = autoTradeConfig;
-    const { support, resistance, emaValue } = stockData;
     const prevPrice = prevPriceRef.current;
-    const prevEMA = prevEMARef.current;
 
-    // Check buy conditions
-    if (!position && prevPrice && prevEMA) {
-      let shouldBuy = false;
-
-      if (buyCondition === 'price_below_ema' && prevPrice > prevEMA && currentPrice < emaValue) {
-        shouldBuy = true;
-      } else if (buyCondition === 'price_above_ema' && prevPrice < prevEMA && currentPrice > emaValue) {
-        shouldBuy = true;
-      } else if (buyCondition === 'price_at_support' && Math.abs(currentPrice - support) / support < 0.002) {
-        shouldBuy = true;
-      } else if (buyCondition === 'price_at_resistance' && Math.abs(currentPrice - resistance) / resistance < 0.002) {
-        shouldBuy = true;
-      }
-
-      if (shouldBuy) {
-        buyStock(true);
-      }
+    if (!prevPrice) {
+      prevPriceRef.current = currentPrice;
+      return;
     }
 
-    // Check sell conditions
-    if (position && prevPrice) {
-      let shouldSell = false;
+    // Simple test logic: Green candle = Buy, Red candle = Sell
+    const isGreenCandle = currentPrice > prevPrice;
+    const isRedCandle = currentPrice < prevPrice;
 
-      if (sellCondition === 'price_above_ema' && prevPrice < prevEMA && currentPrice > emaValue) {
-        shouldSell = true;
-      } else if (sellCondition === 'price_below_ema' && prevPrice > prevEMA && currentPrice < emaValue) {
-        shouldSell = true;
-      } else if (sellCondition === 'price_at_support' && Math.abs(currentPrice - support) / support < 0.002) {
-        shouldSell = true;
-      } else if (sellCondition === 'price_at_resistance' && Math.abs(currentPrice - resistance) / resistance < 0.002) {
-        shouldSell = true;
-      } else if (sellCondition === 'profit_target_2') {
-        const profitPercent = ((currentPrice - position.buyPrice) / position.buyPrice) * 100;
-        if (profitPercent >= 2) shouldSell = true;
-      } else if (sellCondition === 'stop_loss_1') {
-        const profitPercent = ((currentPrice - position.buyPrice) / position.buyPrice) * 100;
-        if (profitPercent <= -1) shouldSell = true;
-      }
+    // Buy on green candle (if no position)
+    if (!position && isGreenCandle) {
+      console.log('🟢 GREEN CANDLE DETECTED - BUYING at', currentPrice);
+      buyStock(true);
+    }
 
-      if (shouldSell) {
-        sellStock(true);
-      }
+    // Sell on red candle (if have position)
+    if (position && isRedCandle) {
+      console.log('🔴 RED CANDLE DETECTED - SELLING at', currentPrice);
+      sellStock(true);
     }
 
     prevPriceRef.current = currentPrice;
-    prevEMARef.current = emaValue;
-  }, [currentPrice, autoTradeConfig, stockData, position]);
+  }, [currentPrice, autoTradeConfig.enabled, position, capital, trades]);
 
   const buyStock = (isAuto = false) => {
     if (!currentPrice || position) return;
