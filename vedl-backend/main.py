@@ -19,7 +19,7 @@ def read_root():
     return {"message": "VEDL Stock API"}
 
 @app.get("/api/stock/{ticker}")
-def get_stock_data(ticker: str, interval: str = "1m", period: str = "1d"):
+def get_stock_data(ticker: str, interval: str = "1m", period: str = "7d"):
     stock = yf.Ticker(f"{ticker}.NS")
     hist = stock.history(period=period, interval=interval)
     
@@ -37,9 +37,18 @@ def get_stock_data(ticker: str, interval: str = "1m", period: str = "1d"):
     return {"data": data[-10:]}  # Return last 10 candles
 
 @app.get("/api/stock/{ticker}/{count}")
-def get_last_candles(ticker: str, count: int):
+def get_last_candles(ticker: str, count: int, interval: str = "1m"):
     stock = yf.Ticker(f"{ticker}.NS")
-    hist = stock.history(period="1d", interval="1m")
+    
+    # Map intervals to appropriate periods
+    period_map = {
+        "1m": "7d",
+        "5m": "60d", 
+        "15m": "60d"
+    }
+    
+    period = period_map.get(interval, "7d")
+    hist = stock.history(period=period, interval=interval)
     
     data = []
     for index, row in hist.tail(count).iterrows():
@@ -57,7 +66,7 @@ def get_last_candles(ticker: str, count: int):
 @app.get("/api/stock/{ticker}/{count}/{interval}")
 def get_last_candles_interval(ticker: str, count: int, interval: str = "1m"):
     stock = yf.Ticker(f"{ticker}.NS")
-    hist = stock.history(period="1d", interval=interval)
+    hist = stock.history(period="7d", interval=interval)
     
     data = []
     for index, row in hist.tail(count).iterrows():
