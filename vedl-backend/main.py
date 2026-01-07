@@ -17,7 +17,7 @@ app.add_middleware(
 
 @app.get("/")
 def read_root():
-    return {"message": "VEDL Stock API"}
+    return {"message": "Stock API"}
 
 @app.get("/api/stock/{ticker}/{count}/{interval}")
 def get_last_candles_with_interval(ticker: str, count: int, interval: str):

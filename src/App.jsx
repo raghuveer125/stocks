@@ -44,7 +44,7 @@ function App() {
         onAutoTradeChange={handleAutoTradeChange}
       />
       <div style={{ flex: 1, padding: '20px' }}>
-        <h1>VEDL Stock Chart</h1>
+        <h1>Stock Chart</h1>
         <PropertiesBar
           ticker={chartParams.ticker}
           currentPrice={stockData.currentPrice}
