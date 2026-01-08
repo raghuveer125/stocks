@@ -179,13 +179,12 @@ function Wallet() {
         border: '1px solid #334155',
         boxShadow: isDragging ? '0 12px 24px rgba(0,0,0,0.5)' : '0 4px 8px rgba(0,0,0,0.3)',
         minWidth: isFullscreen ? '100vw' : '280px',
-        maxHeight: isFullscreen ? '100vh' : (isCollapsed ? '50px' : 'auto'),
         display: 'flex',
         flexDirection: 'column',
         zIndex: isFullscreen ? 1000 : 100,
         cursor: isDragging ? 'grabbing' : 'grab',
-        transition: isDragging ? 'none' : 'max-height 0.3s ease, box-shadow 0.2s ease',
-        overflow: isFullscreen ? 'auto' : 'hidden',
+        transition: isDragging ? 'none' : 'box-shadow 0.2s ease',
+        overflow: isFullscreen ? 'auto' : 'visible',
       }}
       onMouseDown={isFullscreen ? undefined : handleMouseDown}
     >
@@ -196,7 +195,7 @@ function Wallet() {
         justifyContent: 'space-between',
         alignItems: 'center',
         cursor: 'grab',
-        borderBottom: '1px solid #334155',
+        borderBottom: isCollapsed ? 'none' : '1px solid #334155',
         paddingLeft: '10px',
         paddingRight: '10px',
         backgroundColor: isFullscreen ? '#0f172a' : 'transparent',
@@ -230,7 +229,7 @@ function Wallet() {
               onMouseEnter={(e) => e.target.style.color = '#f1f5f9'}
               onMouseLeave={(e) => e.target.style.color = '#94a3b8'}
             >
-              {isCollapsed ? '▲' : '▼'}
+              {isCollapsed ? '▼' : '▲'}
             </button>
           )}
           <button
@@ -261,7 +260,11 @@ function Wallet() {
       </div>
 
       {!isCollapsed && (
-        <>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: isFullscreen ? 'auto' : 'visible',
+        }}>
       <div
         onClick={() => setExpanded(!expanded)}
         style={{
@@ -387,7 +390,7 @@ function Wallet() {
           </button>
         </div>
       )}
-        </>
+        </div>
       )}
     </div>
   );

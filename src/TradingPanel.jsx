@@ -11,6 +11,10 @@ function TradingPanel({ ticker, currentPrice }) {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [panelHeight, setPanelHeight] = useState(650);
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeStartY, setResizeStartY] = useState(0);
+  const [resizeStartHeight, setResizeStartHeight] = useState(0);
   const panelRef = useRef(null);
 
   const fetchTrades = async () => {
@@ -78,6 +82,35 @@ function TradingPanel({ ticker, currentPrice }) {
     }
   }, [isDragging, dragOffset]);
 
+  const handleResizeStart = (e) => {
+    e.stopPropagation();
+    setIsResizing(true);
+    setResizeStartY(e.clientY);
+    setResizeStartHeight(panelHeight);
+  };
+
+  const handleResizeMove = (e) => {
+    if (!isResizing) return;
+    const deltaY = e.clientY - resizeStartY;
+    const newHeight = Math.max(300, Math.min(900, resizeStartHeight + deltaY));
+    setPanelHeight(newHeight);
+  };
+
+  const handleResizeEnd = () => {
+    setIsResizing(false);
+  };
+
+  useEffect(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handleResizeMove);
+      document.addEventListener('mouseup', handleResizeEnd);
+      return () => {
+        document.removeEventListener('mousemove', handleResizeMove);
+        document.removeEventListener('mouseup', handleResizeEnd);
+      };
+    }
+  }, [isResizing, resizeStartY, resizeStartHeight]);
+
   const handleTrade = async () => {
     if (!ticker || !currentPrice || quantity <= 0) {
       alert('Invalid trade parameters');
@@ -115,7 +148,7 @@ function TradingPanel({ ticker, currentPrice }) {
     <div
       ref={panelRef}
       style={{
-        position: isFullscreen ? 'fixed' : 'fixed',
+        position: 'fixed',
         left: isFullscreen ? '0px' : `${position.x}px`,
         top: isFullscreen ? '0px' : `${position.y}px`,
         backgroundColor: '#1e293b',
@@ -123,8 +156,8 @@ function TradingPanel({ ticker, currentPrice }) {
         border: '1px solid #334155',
         boxShadow: isDragging ? '0 12px 24px rgba(0,0,0,0.5)' : '0 4px 8px rgba(0,0,0,0.3)',
         width: isFullscreen ? '100vw' : '350px',
-        height: isFullscreen ? '100vh' : 'auto',
-        maxHeight: isFullscreen ? '100vh' : (isCollapsed ? '50px' : '500px'),
+        height: isFullscreen ? '100vh' : (isCollapsed ? 'auto' : `${panelHeight}px`),
+        maxHeight: isFullscreen ? '100vh' : (isCollapsed ? '50px' : `${panelHeight}px`),
         display: 'flex',
         flexDirection: 'column',
         zIndex: isFullscreen ? 1000 : 100,
@@ -362,7 +395,7 @@ function TradingPanel({ ticker, currentPrice }) {
         flex: 1,
         overflowY: 'auto',
         padding: isFullscreen ? '20px' : '0 20px 20px',
-        maxHeight: isFullscreen ? 'calc(100vh - 350px)' : '200px',
+        maxHeight: isFullscreen ? 'calc(100vh - 350px)' : '350px',
       }}>
         {trades.length === 0 ? (
           <div style={{ color: '#64748b', textAlign: 'center', padding: '20px 0', fontSize: '0.9rem' }}>
@@ -453,6 +486,35 @@ function TradingPanel({ ticker, currentPrice }) {
         )}
       </div>
         </>
+      )}
+
+      {/* Resize handle */}
+      {!isCollapsed && !isFullscreen && (
+        <div
+          onMouseDown={handleResizeStart}
+          style={{
+            position: 'absolute',
+            bottom: '0',
+            left: '0',
+            right: '0',
+            height: '8px',
+            cursor: 'ns-resize',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'transparent',
+            transition: 'background-color 0.2s ease',
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#334155'}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+        >
+          <div style={{
+            width: '40px',
+            height: '3px',
+            backgroundColor: '#475569',
+            borderRadius: '2px',
+          }}></div>
+        </div>
       )}
     </div>
   );
